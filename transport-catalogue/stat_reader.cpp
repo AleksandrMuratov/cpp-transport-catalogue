@@ -7,9 +7,8 @@
 namespace transport_directory {
 	namespace stat_reader {
 
-		std::vector<std::shared_ptr<transport_directory::transport_catalogue::Statistics>> LoadRequestStat(transport_directory::transport_catalogue::TransportCatalogue& guide, std::istream& is) {
+		void LoadRequestStat(transport_directory::transport_catalogue::TransportCatalogue& guide, std::istream& is, std::ostream& os) {
 			using namespace std::literals;
-			std::vector<std::shared_ptr<transport_directory::transport_catalogue::Statistics>> stats;
 			int n;
 			is >> n;
 			std::string input_str;
@@ -19,16 +18,15 @@ namespace transport_directory {
 				if (type_transport_object == "Bus"s) {
 					std::getline(is, input_str);
 					std::string_view name_bus = input_reader::detail::LRStrip(input_str, ' ');
-					stats.push_back(guide.RequestStatBusRoute(name_bus));
+					os << *(guide.RequestStatBusRoute(name_bus)) << '\n';
 				}
 				else if (type_transport_object == "Stop"s) {
 					std::getline(is, input_str);
 					std::string_view name_stop = input_reader::detail::LRStrip(input_str, ' ');
-					stats.push_back(guide.RequestStatForStop(name_stop));
+					os << *(guide.RequestStatForStop(name_stop)) << '\n';
 				}
 				--n;
 			}
-			return stats;
 		}
 
 	}//end namespace stat_reader

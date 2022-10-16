@@ -26,8 +26,10 @@ namespace transport_directory {
                 });
             std::for_each(objects.begin(), objects.end(), [&guide](const detail::TransportObject& tr_obj) {
                 if (tr_obj.type == detail::TypeTransportObject::STOP) {
+                    const transport_catalogue::TransportCatalogue::Stop* from = guide.SearchStop(tr_obj.name);
                     for (const auto& [stop_to, distance] : tr_obj.distances_to) {
-                        guide.AddDistance(tr_obj.name, stop_to, distance);
+                        const transport_catalogue::TransportCatalogue::Stop* to = guide.SearchStop(stop_to);
+                        guide.SetDistance(from, to, distance);
                     }
                 }
                 });
@@ -98,47 +100,62 @@ namespace transport_directory {
                 return result;
             }
 
+            void ParseDistancesToStops(std::string_view str, TransportObject& tr_obj) {
+                while (!str.empty()) {
+                    auto [distance, right] = Split(str, 'm');
+                    distance = LStrip(distance, ' ');
+                    right = LStrip(right, ' ');
+                    auto [_, right2] = Split(right, ' ');
+                    auto [stop, right3] = Split(right2, ',');
+                    stop = LRStrip(stop, ' ');
+                    tr_obj.distances_to.emplace_back(stop, std::stoi(std::string(distance)));
+                    str = right3;
+                }
+            }
+
+            TransportObject ParseStopObject(std::string_view str) {
+                TransportObject tr_obj;
+                tr_obj.type = TypeTransportObject::STOP;
+                str = LRStrip(str, ' ');
+                auto [name_stop, right] = Split(str, ':');
+                name_stop = RStrip(name_stop, ' ');
+                tr_obj.name = name_stop;
+                right = LStrip(right, ' ');
+                auto [latitude, right2] = Split(right, ',');
+                latitude = RStrip(latitude, ' ');
+                auto [longitude, distances_to_stops] = Split(right2, ',');
+                longitude = LRStrip(longitude, ' ');
+                tr_obj.coordinates.lat = std::stod(std::string(latitude));
+                tr_obj.coordinates.lng = std::stod(std::string(longitude));
+                ParseDistancesToStops(distances_to_stops, tr_obj);
+                return tr_obj;
+            }
+
+            TransportObject ParseBusObject(std::string_view str) {
+                TransportObject tr_obj;
+                tr_obj.type = TypeTransportObject::BUS;
+                str = LRStrip(str, ' ');
+                auto [name_bus, str_of_stops] = Split(str, ':');
+                name_bus = RStrip(name_bus, ' ');
+                tr_obj.name = name_bus;
+                tr_obj.stops = std::move(SplitInToStops(str_of_stops));
+                return tr_obj;
+            }
+
             TransportObject ParseRequestToFillTransportGuide(const std::string& str) {
                 using namespace std::literals;
-                TransportObject tr_obj;
                 std::string_view str_view = LRStrip(str, ' ');
                 auto [type, right] = Split(str_view, ' ');
                 if (type == "Stop"s) {
-                    tr_obj.type = TypeTransportObject::STOP;
-                    right = LRStrip(right, ' ');
-                    auto [name_stop, right2] = Split(right, ':');
-                    name_stop = RStrip(name_stop, ' ');
-                    tr_obj.name = name_stop;
-                    right2 = LStrip(right2, ' ');
-                    auto [latitude, right3] = Split(right2, ',');
-                    latitude = RStrip(latitude, ' ');
-                    auto [longitude, distances_to] = Split(right3, ',');
-                    longitude = LRStrip(longitude, ' ');
-                    while (!distances_to.empty()) {
-                        auto [distance, right] = Split(distances_to, 'm');
-                        distance = LStrip(distance, ' ');
-                        right = LStrip(right, ' ');
-                        auto [_, right2] = Split(right, ' ');
-                        auto [stop, right3] = Split(right2, ',');
-                        stop = LRStrip(stop, ' ');
-                        tr_obj.distances_to.emplace_back(stop, std::stoi(std::string(distance)));
-                        distances_to = right3;
-                    }
-                    tr_obj.coordinates.lat = std::stod(std::string(latitude));
-                    tr_obj.coordinates.lng = std::stod(std::string(longitude));
+                    return ParseStopObject(right);
                 }
                 else if (type == "Bus"s) {
-                    tr_obj.type = TypeTransportObject::BUS;
-                    right = LRStrip(right, ' ');
-                    auto [name_bus, str_of_stops] = Split(right, ':');
-                    name_bus = RStrip(name_bus, ' ');
-                    tr_obj.name = name_bus;
-                    tr_obj.stops = std::move(SplitInToStops(str_of_stops));
+                    return ParseBusObject(right);
                 }
                 else {
                     throw std::invalid_argument("Wrong format of request");
                 }
-                return tr_obj;
+                return {};
             }
         }//end namespace detail
     }//end namespace input_reader

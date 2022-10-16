@@ -63,11 +63,11 @@ namespace transport_directory {
 			index_buses_.emplace(bus.name, &bus);
 		}
 
-		void TransportCatalogue::AddDistance(std::string_view from, std::string_view to, int distance) {
-			distances_.emplace(std::pair<Stop*, Stop*>{ index_stops_.at(from), index_stops_.at(to) }, distance);
+		void TransportCatalogue::SetDistance(const Stop* from, const Stop* to, int distance) {
+			distances_.emplace(std::pair<const Stop*, const Stop*>{ from, to }, distance);
 		}
 
-		int TransportCatalogue::GetDistance(Stop* from, Stop* to) const {
+		int TransportCatalogue::GetDistance(const Stop* from, const Stop* to) const {
 			auto it = distances_.find({ from, to });
 			if (it == distances_.end()) {
 				return distances_.at({ to, from });
@@ -79,15 +79,23 @@ namespace transport_directory {
 
 		TransportCatalogue::BusRoute::BusRoute(std::string name_bus, std::vector<Stop*> bus_route) : name(std::move(name_bus)), route(std::move(bus_route)) {}
 
-		const TransportCatalogue::BusRoute& TransportCatalogue::SearchRoute(std::string_view name_bus) const {
-			return *index_buses_.at(name_bus);
+		const TransportCatalogue::BusRoute* TransportCatalogue::SearchRoute(std::string_view name_bus) const {
+			auto it = index_buses_.find(name_bus);
+			if (it == index_buses_.end()) {
+				return nullptr;
+			}
+			return it->second;
 		}
 
-		const TransportCatalogue::Stop& TransportCatalogue::SearchStop(std::string_view name_stop) const {
-			return *index_stops_.at(name_stop);
+		const TransportCatalogue::Stop* TransportCatalogue::SearchStop(std::string_view name_stop) const {
+			auto it = index_stops_.find(name_stop);
+			if (it == index_stops_.end()) {
+				return nullptr;
+			}
+			return it->second;
 		}
 
-		size_t TransportCatalogue::DistancesHasher::operator()(const std::pair<Stop*, Stop*>& p) const {
+		size_t TransportCatalogue::DistancesHasher::operator()(const std::pair<const Stop*, const Stop*>& p) const {
 			return hasher((uintptr_t)p.first) + 47 * hasher((uintptr_t)p.second);
 		}
 

@@ -35,6 +35,12 @@ namespace transport_directory {
 
 			std::vector<std::string> SplitInToStops(std::string_view line);
 
+			void ParseDistancesToStops(std::string_view str, TransportObject& tr_obj);
+
+			TransportObject ParseStopObject(std::string_view str);
+
+			TransportObject ParseBusObject(std::string_view str);
+
 			TransportObject ParseRequestToFillTransportGuide(const std::string& str);
 		}//end namespace detail
 	}//end namespace input_reader

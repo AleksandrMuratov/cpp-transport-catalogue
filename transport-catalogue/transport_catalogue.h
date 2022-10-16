@@ -66,9 +66,9 @@ namespace transport_directory {
 
 			void AddBusRoute(std::string name_bus, std::vector<std::string> stops);
 
-			void AddDistance(std::string_view from, std::string_view to, int distance);
+			void SetDistance(const Stop* from, const Stop* to, int distance);
 
-			int GetDistance(Stop* from, Stop* to) const;
+			int GetDistance(const Stop* from, const Stop* to) const;
 
 			template<typename T = StatBusRoute>
 			std::shared_ptr<Statistics> RequestStatBusRoute(std::string_view name_bus) const;
@@ -76,32 +76,32 @@ namespace transport_directory {
 			template<typename T = StatForStop>
 			std::shared_ptr<Statistics> RequestStatForStop(std::string_view name_stop) const;
 
-			const BusRoute& SearchRoute(std::string_view name_bus) const;
+			const BusRoute* SearchRoute(std::string_view name_bus) const;
 
-			const Stop& SearchStop(std::string_view name_stop) const;
+			const Stop* SearchStop(std::string_view name_stop) const;
 
 		private:
 
 			struct DistancesHasher {
 				std::hash<uintptr_t> hasher;
-				size_t operator()(const std::pair<Stop*, Stop*>& p) const;
+				size_t operator()(const std::pair<const Stop*, const Stop*>& p) const;
 			};
 
 			std::deque<Stop> stops_;
 			std::deque<BusRoute> bus_routes_;
 			std::unordered_map<std::string_view, Stop*> index_stops_;
 			std::unordered_map<std::string_view, BusRoute*> index_buses_;
-			std::unordered_map<std::pair<Stop*, Stop*>, int, DistancesHasher> distances_;
+			std::unordered_map<std::pair<const Stop*, const Stop*>, int, DistancesHasher> distances_;
 			std::unordered_map<std::string_view, std::set<std::string_view>> stop_buses_;
 		};
 
 		template<typename T>
 		std::shared_ptr<Statistics> TransportCatalogue::RequestStatBusRoute(std::string_view name_bus) const {
-			auto it = index_buses_.find(name_bus);
-			if (it == index_buses_.end()) {
+			auto bus_route_ptr = SearchRoute(name_bus);
+			if (!bus_route_ptr) {
 				return std::make_shared<T>(std::string(name_bus));
 			}
-			const BusRoute& bus_route = *it->second;
+			const BusRoute& bus_route = *bus_route_ptr;
 			size_t count_stops = bus_route.route.size();
 			std::unordered_set<Stop*> unique_stops;
 			unique_stops.insert(bus_route.route[0]);
@@ -119,10 +119,10 @@ namespace transport_directory {
 
 		template<typename T>
 		std::shared_ptr<Statistics> TransportCatalogue::RequestStatForStop(std::string_view name_stop) const {
-			auto it = stop_buses_.find(name_stop);
-			if (it == stop_buses_.end()) {
+			if (!SearchStop(name_stop)) {
 				return std::make_shared<T>(name_stop, nullptr);
 			}
+			auto it = stop_buses_.find(name_stop);
 			return std::make_shared<T>(name_stop, &(it->second));
 		}
 
