@@ -1,14 +1,13 @@
 #include <iostream>
-
 #include "transport_catalogue.h"
-#include "input_reader.h"
-#include "stat_reader.h"
-
-using namespace std;
+#include "json_reader.h"
+#include "json.h"
+#include "json_reader.h"
 
 int main() {
-	transport_directory::transport_catalogue::TransportCatalogue guide;
-	transport_directory::input_reader::LoadTransportGuide(guide);
-	transport_directory::stat_reader::LoadRequestStat(guide);
-	return 0;
+    json::Document doc(json::Load(std::cin));
+    transport_directory::transport_catalogue::TransportCatalogue guide;
+    transport_directory::json_reader::LoadTransportGuide(doc, guide);
+    transport_directory::json_reader::PrintAnswearsForRequests(doc, guide);
+    return 0;
 }
