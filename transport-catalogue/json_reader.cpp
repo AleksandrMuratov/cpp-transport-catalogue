@@ -14,15 +14,13 @@ namespace transport_directory {
 			for (const auto& node : requests) {
 				const auto& request = node.AsMap();
 				if (request.at("type"s).AsString() == "Bus"s) {
-					answears.push_back(detail::StatToJson(guide.RequestStatBusRoute(request.at("name"s).AsString()), request.at("id"s).AsInt()));
+					answears.push_back(detail::RequestBusRoute(request, guide));
 				}
 				else if(request.at("type"s).AsString() == "Stop"s) {
-					answears.push_back(detail::StatToJson(guide.RequestStatForStop(request.at("name"s).AsString()), request.at("id"s).AsInt()));
+					answears.push_back(detail::RequestBusesForStop(request, guide));
 				}
 				else if (request.at("type"s).AsString() == "Map"s) {
-					std::ostringstream os;
-					json_reader::PrintMapToSvg(doc, guide, os);
-					answears.push_back(detail::SvgToJson(os.str(), request.at("id"s).AsInt()));
+					answears.push_back(detail::RequestMap(doc, request, guide));
 				}
 			}
 			json::Document doc_with_answears(std::move(answears));
@@ -85,6 +83,25 @@ namespace transport_directory {
 
 		namespace detail {
 
+			json::Node RequestBusRoute(const json::Dict& request, const transport_catalogue::TransportCatalogue& guide) {
+				using namespace std::literals;
+				const auto stat = guide.RequestStatBusRoute(request.at("name"s).AsString());
+				return detail::StatToJson(stat, request.at("id"s).AsInt());
+			}
+
+			json::Node RequestBusesForStop(const json::Dict& request, const transport_catalogue::TransportCatalogue& guide) {
+				using namespace std::literals;
+				const auto stat = guide.RequestStatForStop(request.at("name"s).AsString());
+				return detail::StatToJson(stat, request.at("id"s).AsInt());
+			}
+
+			json::Node RequestMap(const json::Document& doc, const json::Dict& request, const transport_catalogue::TransportCatalogue& guide) {
+				using namespace std::literals;
+				std::ostringstream os;
+				json_reader::PrintMapToSvg(doc, guide, os);
+				return detail::SvgToJson(os.str(), request.at("id"s).AsInt());
+			}
+
 			json::Node StatToJson(const transport_catalogue::StatBusRoute& stat, int request_id) {
 				using namespace std::literals;
 				json::Dict dict;
@@ -128,7 +145,6 @@ namespace transport_directory {
 			}
 
 			void ParseDistancesToStops(const json::Node& node, TransportObject& obj) {
-				using namespace std::literals;
 				for (const auto& [stop, distance] : node.AsMap()) {
 					obj.distances_to.emplace_back(stop, distance.AsDouble());
 				}

@@ -3,7 +3,7 @@
 
 namespace renderer {
 
-	Route::Route(const std::vector<svg::Point>& stops, svg::Color stroke_color, double stroke_width) {
+	RenderRoute::RenderRoute(const std::vector<svg::Point>& stops, svg::Color stroke_color, double stroke_width) {
 		for (const auto& point : stops) {
 			route_.AddPoint(point);
 		}
@@ -12,11 +12,11 @@ namespace renderer {
 			.SetStrokeLineJoin(svg::StrokeLineJoin::ROUND);
 	}
 
-	void Route::Draw(svg::ObjectContainer& container) const {
+	void RenderRoute::Draw(svg::ObjectContainer& container) const {
 		container.Add(route_);
 	}
 
-    NameOfRoutes::NameOfRoutes(const svg::Point& pos, const svg::Point& offset, int font_size,
+    RenderNameOfRoutes::RenderNameOfRoutes(const svg::Point& pos, const svg::Point& offset, int font_size,
         const std::string& name_bus, svg::Color underlayer_color, double underlayer_width, svg::Color text_color) {
         using namespace std::literals;
         underlayer_.SetPosition(pos).SetOffset(offset).SetFontSize(font_size)
@@ -29,21 +29,21 @@ namespace renderer {
             .SetFillColor(text_color);
     }
 
-    void NameOfRoutes::Draw(svg::ObjectContainer& container) const {
+    void RenderNameOfRoutes::Draw(svg::ObjectContainer& container) const {
         container.Add(underlayer_);
         container.Add(text_);
     }
 
-    CirclForStop::CirclForStop(const svg::Point& center, double radius) {
+    RenderCirclForStop::RenderCirclForStop(const svg::Point& center, double radius) {
         using namespace std::literals;
         circle_.SetCenter(center).SetRadius(radius).SetFillColor("white"s);
     }
 
-    void CirclForStop::Draw(svg::ObjectContainer& container) const {
+    void RenderCirclForStop::Draw(svg::ObjectContainer& container) const {
         container.Add(circle_);
     }
 
-    NameOfStops::NameOfStops(const svg::Point& pos, const svg::Point& offset, int font_size,
+    RenderNameOfStops::RenderNameOfStops(const svg::Point& pos, const svg::Point& offset, int font_size,
         const std::string& name_stop, svg::Color underlayer_color, double underlayer_width) {
         using namespace std::literals;
         underlayer_.SetPosition(pos).SetOffset(offset).SetFontSize(font_size)
@@ -56,7 +56,7 @@ namespace renderer {
             .SetFillColor("black"s);
     }
 
-    void NameOfStops::Draw(svg::ObjectContainer& container) const {
+    void RenderNameOfStops::Draw(svg::ObjectContainer& container) const {
         container.Add(underlayer_);
         container.Add(text_);
     }
@@ -96,14 +96,14 @@ namespace renderer {
             for (const auto& stop : bus_route->route) {
                 points.push_back(proj(stop->coordinates));
             }
-            result.emplace_back(std::make_unique<Route>(points, settings_.color_palette_[index_color_palette], settings_.line_width_));
+            result.emplace_back(std::make_unique<RenderRoute>(points, settings_.color_palette_[index_color_palette], settings_.line_width_));
 
-            names_of_routes.emplace_back(std::make_unique<NameOfRoutes>(points[0], settings_.bus_label_offset_,
+            names_of_routes.emplace_back(std::make_unique<RenderNameOfRoutes>(points[0], settings_.bus_label_offset_,
                 settings_.bus_label_font_size_, bus_route->name, settings_.underlayer_color_,
                 settings_.underlayer_width_, settings_.color_palette_[index_color_palette]));
 
             if (!(bus_route->is_roundtrip) && (bus_route->route[0] != bus_route->route[static_cast<int>(bus_route->route.size()) / 2])) {
-                names_of_routes.emplace_back(std::make_unique<NameOfRoutes>(points[static_cast<int>(bus_route->route.size()) / 2], 
+                names_of_routes.emplace_back(std::make_unique<RenderNameOfRoutes>(points[static_cast<int>(bus_route->route.size()) / 2], 
                     settings_.bus_label_offset_, settings_.bus_label_font_size_, bus_route->name, settings_.underlayer_color_,
                     settings_.underlayer_width_, settings_.color_palette_[index_color_palette]));
             }
@@ -111,8 +111,8 @@ namespace renderer {
         }
         for (const auto& [name_stop, stop] : stops_for_draw) {
             svg::Point stop_center = proj(stop->coordinates);
-            circles_for_stops.push_back(std::make_unique<CirclForStop>(stop_center, settings_.stop_radius_));
-            names_of_stops.push_back(std::make_unique<NameOfStops>(stop_center, settings_.stop_label_offset_,
+            circles_for_stops.push_back(std::make_unique<RenderCirclForStop>(stop_center, settings_.stop_radius_));
+            names_of_stops.push_back(std::make_unique<RenderNameOfStops>(stop_center, settings_.stop_label_offset_,
                 settings_.stop_label_font_size_, stop->name, settings_.underlayer_color_, settings_.underlayer_width_));
         }
         for (auto& name_of_route : names_of_routes) {

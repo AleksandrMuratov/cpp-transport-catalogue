@@ -25,6 +25,12 @@ namespace transport_directory {
 
 		namespace detail {
 
+			json::Node RequestBusRoute(const json::Dict& request, const transport_catalogue::TransportCatalogue& guide);
+
+			json::Node RequestBusesForStop(const json::Dict& request, const transport_catalogue::TransportCatalogue& guide);
+
+			json::Node RequestMap(const json::Document& doc, const json::Dict& request, const transport_catalogue::TransportCatalogue& guide);
+
 			json::Node StatToJson(const transport_catalogue::StatBusRoute& stat, int request_id);
 
 			json::Node StatToJson(const transport_catalogue::StatForStop& stat, int request_id);

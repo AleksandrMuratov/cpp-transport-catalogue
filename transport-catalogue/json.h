@@ -19,19 +19,9 @@ namespace json {
         using runtime_error::runtime_error;
     };
 
-    class Node {
+    class Node final : public std::variant<std::nullptr_t, int, double, std::string, bool, Array, Dict> {
     public:
-        /* –еализуйте Node, использу€ std::variant */
-        using Value = std::variant<std::nullptr_t, int, double, std::string, bool, Array, Dict>;
-
-        Node() = default;
-        Node(Array array);
-        Node(Dict map);
-        Node(int value);
-        Node(std::string value);
-        Node(double value);
-        Node(bool value);
-        Node(nullptr_t);
+        using variant::variant;
 
         const Array& AsArray() const;
         const Dict& AsMap() const;
@@ -49,10 +39,7 @@ namespace json {
         bool IsArray() const;
         bool IsMap() const;
 
-        const Value& GetValue() const;
-
-    private:
-        Value value_;
+        const std::variant<std::nullptr_t, int, double, std::string, bool, Array, Dict>& GetValue() const;
     };
 
     namespace detail {
@@ -63,21 +50,17 @@ namespace json {
 
         Number LoadNumber(std::istream& input);
 
-        std::string LoadString(std::istream& input);
+        Node LoadString(std::istream& input);
 
         Node LoadArray(std::istream& input);
 
         Node LoadDigit(std::istream& input);
-
-        Node LoadNodeString(std::istream& input);
 
         Node LoadDict(std::istream& input);
 
         Node LoadBool(std::istream& input);
 
         Node LoadNull(std::istream& input);
-
-
 
         struct PrintContext {
             std::ostream& out;
@@ -123,16 +106,13 @@ namespace json {
 
     void Print(const Document& doc, std::ostream& output);
 
+    bool operator==(const Node& lhs, const Node& rhs);
+
+    bool operator!=(const Node& lhs, const Node& rhs);
+
+    bool operator==(const json::Document& lhs, const json::Document& rhs);
+
+    bool operator!=(const json::Document& lhs, const json::Document& rhs);
+
 }  // namespace json
 
-bool operator==(const json::Node& lhs, const json::Node& rhs);
-
-bool operator==(const json::Array& lhs, const json::Array& rhs);
-
-bool operator==(const json::Dict& lhs, const json::Dict& rhs);
-
-bool operator!=(const json::Node& lhs, const json::Node& rhs);
-
-bool operator==(const json::Document& lhs, const json::Document& rhs);
-
-bool operator!=(const json::Document& lhs, const json::Document& rhs);

@@ -88,7 +88,7 @@ namespace json {
 
         // Считывает содержимое строкового литерала JSON-документа
         // Функцию следует использовать после считывания открывающего символа ":
-        std::string LoadString(std::istream& input) {
+        Node LoadString(std::istream& input) {
             using namespace std::literals;
 
             auto it = std::istreambuf_iterator<char>(input);
@@ -163,19 +163,15 @@ namespace json {
             if (c != ']') {
                 throw ParsingError("not valid node Array");
             }
-            return Node(move(result));
+            return result;
         }
 
         Node LoadDigit(istream& input) {
             const auto number = LoadNumber(input);
             if (std::holds_alternative<double>(number)) {
-                return Node(std::get<double>(number));
+                return std::get<double>(number);
             }
-            return Node(std::get<int>(number));
-        }
-
-        Node LoadNodeString(istream& input) {
-            return Node(LoadString(input));
+            return std::get<int>(number);
         }
 
         Node LoadDict(istream& input) {
@@ -187,7 +183,7 @@ namespace json {
                     Skip(input);
                     input >> c;
                 }
-                string key = LoadString(input);
+                string key = std::get<std::string>(LoadString(input));
                 Skip(input);
                 input >> c;
                 result.insert({ move(key), LoadNode(input) });
@@ -197,7 +193,7 @@ namespace json {
                 throw ParsingError("not valid node Dict");
             }
 
-            return Node(move(result));
+            return result;
         }
 
         Node LoadBool(istream& input) {
@@ -212,7 +208,7 @@ namespace json {
                 }
                 if (true_ == "true"s && ((input >> c && end_char.find(c) != std::string::npos) || !input)) {
                     input.putback(c);
-                    return Node(true);
+                    return true;
                 }
                 else {
                     error = true;
@@ -225,7 +221,7 @@ namespace json {
                 }
                 if (false_ == "false"s && ((input >> c && end_char.find(c) != std::string::npos) || !input)) {
                     input.putback(c);
-                    return Node(false);
+                    return false;
                 }
                 else {
                     error = true;
@@ -271,7 +267,7 @@ namespace json {
                 return LoadDict(input);
             }
             else if (c == '"') {
-                return LoadNodeString(input);
+                return LoadString(input);
             }
             else if (std::isdigit(c) || c == '-') {
                 input.putback(c);
@@ -391,100 +387,73 @@ namespace json {
 
     }  // namespace detail
 
-    Node::Node(Array array)
-        : value_(std::move(array)) {
-    }
-
-    Node::Node(Dict map)
-        : value_(std::move(map)) {
-    }
-
-    Node::Node(int value)
-        : value_(value) {
-    }
-
-    Node::Node(string value)
-        : value_(std::move(value)) {
-    }
-
-    Node::Node(double value)
-        : value_(value) {
-    }
-    Node::Node(bool value)
-        : value_(value) {
-    }
-
-    Node::Node(nullptr_t)
-        : Node() {
-    }
-
     bool Node::IsInt() const {
-        return std::holds_alternative<int>(value_);
+        return std::holds_alternative<int>(*this);
     }
     bool Node::IsDouble() const {
-        return std::holds_alternative<int>(value_) || std::holds_alternative<double>(value_);
+        return std::holds_alternative<int>(*this) || std::holds_alternative<double>(*this);
     }
     bool Node::IsPureDouble() const {
-        return std::holds_alternative<double>(value_);
+        return std::holds_alternative<double>(*this);
     }
     bool Node::IsBool() const {
-        return std::holds_alternative<bool>(value_);
+        return std::holds_alternative<bool>(*this);
     }
     bool Node::IsString() const {
-        return std::holds_alternative<std::string>(value_);
+        return std::holds_alternative<std::string>(*this);
     }
     bool Node::IsNull() const {
-        return std::holds_alternative<nullptr_t>(value_);
+        return std::holds_alternative<nullptr_t>(*this);
     }
     bool Node::IsArray() const {
-        return std::holds_alternative<Array>(value_);
+        return std::holds_alternative<Array>(*this);
     }
     bool Node::IsMap() const {
-        return std::holds_alternative<Dict>(value_);
+        return std::holds_alternative<Dict>(*this);
     }
 
     const Array& Node::AsArray() const {
         if (!IsArray()) {
             throw std::logic_error("logic_error not array");
         }
-        return std::get<Array>(value_);
+        return std::get<Array>(*this);
     }
 
     const Dict& Node::AsMap() const {
         if (!IsMap()) {
             throw std::logic_error("logic_error not map");
         }
-        return std::get<Dict>(value_);
+        return std::get<Dict>(*this);
     }
 
     int Node::AsInt() const {
         if (!IsInt()) {
             throw std::logic_error("logic_error not int");
         }
-        return std::get<int>(value_);
+        return std::get<int>(*this);
     }
 
     const std::string& Node::AsString() const {
         if (!IsString()) {
             throw std::logic_error("logic_error not string");
         }
-        return std::get<std::string>(value_);
+        return std::get<std::string>(*this);
     }
 
     bool Node::AsBool() const {
         if (!IsBool()) {
             throw std::logic_error("logic_error not bool");
         }
-        return std::get<bool>(value_);
+        return std::get<bool>(*this);
     }
 
     double Node::AsDouble() const {
         double result;
         if (IsInt()) {
-            result = std::get<int>(value_);
+            result = std::get<int>(*this);
         }
         else if (IsDouble()) {
-            result = std::get<double>(value_);
+            result = std::get<double>(*this);
         }
         else {
             throw std::logic_error("logic_error not double or int");
@@ -492,8 +461,8 @@ namespace json {
         return result;
     }
 
-    const Node::Value& Node::GetValue() const {
-        return value_;
+    const std::variant<std::nullptr_t, int, double, std::string, bool, Array, Dict>& Node::GetValue() const {
+        return *this;
     }
 
     Document::Document(Node root)
@@ -512,74 +481,21 @@ namespace json {
         detail::PrintNode(doc.GetRoot(), { output });
     }
 
+    bool operator==(const Node& lhs, const Node& rhs) {
+        return lhs.GetValue() == rhs.GetValue();
+    }
+
+    bool operator!=(const Node& lhs, const Node& rhs) {
+        return !(lhs == rhs);
+    }
+
+    bool operator==(const json::Document& lhs, const json::Document& rhs) {
+        return lhs.GetRoot() == rhs.GetRoot();
+    }
+
+    bool operator!=(const json::Document& lhs, const json::Document& rhs) {
+        return !(lhs == rhs);
+    }
+
 }  // namespace json
 
-bool operator==(const json::Node& lhs, const json::Node& rhs) {
-    const auto& lhs_v = lhs.GetValue();
-    const auto& rhs_v = rhs.GetValue();
-    if (lhs_v.index() == rhs_v.index()) {
-        size_t index = lhs_v.index();
-        if (index == 0) {
-            return std::get<nullptr_t>(lhs_v) == std::get<nullptr_t>(rhs_v);
-        }
-        else if (index == 1) {
-            return std::get<int>(lhs_v) == std::get<int>(rhs_v);
-        }
-        else if (index == 2) {
-            return std::get<double>(lhs_v) == std::get<double>(rhs_v);
-        }
-        else if (index == 3) {
-            return std::get<std::string>(lhs_v) == std::get<std::string>(rhs_v);
-        }
-        else if (index == 4) {
-            return std::get<bool>(lhs_v) == std::get<bool>(rhs_v);
-        }
-        else if (index == 5) {
-            return std::get<json::Array>(lhs_v) == std::get<json::Array>(rhs_v);
-        }
-        else if (index == 6) {
-            return std::get<json::Dict>(lhs_v) == std::get<json::Dict>(rhs_v);
-        }
-    }
-    return false;
-}
-
-bool operator==(const json::Array& lhs, const json::Array& rhs) {
-    if (lhs.size() == rhs.size()) {
-        for (size_t i = 0; i < lhs.size(); ++i) {
-            if (lhs[i] != rhs[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
-}
-
-bool operator==(const json::Dict& lhs, const json::Dict& rhs) {
-    if (lhs.size() == rhs.size()) {
-        auto it_l = lhs.begin();
-        auto it_r = rhs.begin();
-        while (it_l != lhs.end() || it_r != rhs.end()) {
-            if (it_l->first != it_r->first || it_l->second != it_r->second) {
-                return false;
-            }
-            ++it_l; ++it_r;
-        }
-        return true;
-    }
-    return false;
-}
-
-
-bool operator!=(const json::Node& lhs, const json::Node& rhs) {
-    return !(lhs == rhs);
-}
-
-bool operator==(const json::Document& lhs, const json::Document& rhs) {
-    return lhs.GetRoot() == rhs.GetRoot();
-}
-
-bool operator!=(const json::Document& lhs, const json::Document& rhs) {
-    return !(lhs == rhs);
-}

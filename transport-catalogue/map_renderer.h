@@ -17,23 +17,23 @@ namespace renderer {
 
         using OffSet = svg::Point;
 
-		double width_;
-		double height_;
-		double padding_;
-		double line_width_;
-		double stop_radius_;
-		int bus_label_font_size_;
+		double width_ = 1.0;
+		double height_ = 1.0;
+		double padding_ = 1.0;
+		double line_width_ = 1.0;
+		double stop_radius_ = 1.0;
+		int bus_label_font_size_ = 1;
 		OffSet bus_label_offset_;
-		int stop_label_font_size_;
+		int stop_label_font_size_ = 1;
 		OffSet stop_label_offset_;
 		svg::Color underlayer_color_;
-		double underlayer_width_;
+		double underlayer_width_ = 1.0;
 		std::vector<svg::Color> color_palette_;
 	};
 
-	class Route : public svg::Drawable {
+	class RenderRoute : public svg::Drawable {
 	public:
-		Route(const std::vector<svg::Point>& stops, svg::Color stroke_color, double stroke_width);
+		RenderRoute(const std::vector<svg::Point>& stops, svg::Color stroke_color, double stroke_width);
 
 		void Draw(svg::ObjectContainer& container) const override;
 
@@ -41,9 +41,9 @@ namespace renderer {
 		svg::Polyline route_;
 	};
 
-    class NameOfRoutes : public svg::Drawable {
+    class RenderNameOfRoutes : public svg::Drawable {
     public:
-        NameOfRoutes(const svg::Point& pos, const svg::Point& offset, int font_size,
+        RenderNameOfRoutes(const svg::Point& pos, const svg::Point& offset, int font_size,
             const std::string& name_bus, svg::Color underlayer_color, double underlayer_width, svg::Color text_color);
 
         void Draw(svg::ObjectContainer& container) const override;
@@ -53,9 +53,9 @@ namespace renderer {
         svg::Text text_;
     };
 
-    class CirclForStop : public svg::Drawable {
+    class RenderCirclForStop : public svg::Drawable {
     public:
-        CirclForStop(const svg::Point& center, double radius);
+        RenderCirclForStop(const svg::Point& center, double radius);
 
         void Draw(svg::ObjectContainer& container) const override;
 
@@ -63,9 +63,9 @@ namespace renderer {
         svg::Circle circle_;
     };
 
-    class NameOfStops : public svg::Drawable {
+    class RenderNameOfStops : public svg::Drawable {
     public:
-        NameOfStops(const svg::Point& pos, const svg::Point& offset, int font_size,
+        RenderNameOfStops(const svg::Point& pos, const svg::Point& offset, int font_size,
             const std::string& name_stop, svg::Color underlayer_color, double underlayer_width);
 
         void Draw(svg::ObjectContainer& container) const override;
