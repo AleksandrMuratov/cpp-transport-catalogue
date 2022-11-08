@@ -1,4 +1,5 @@
 #include "json_reader.h"
+#include "json_builder.h"
 #include <stdexcept>
 #include <algorithm>
 #include <sstream>
@@ -8,11 +9,11 @@ namespace transport_directory {
 
 		void PrintAnswearsForRequests(const json::Document& doc, transport_catalogue::TransportCatalogue guide, std::ostream& os) {
 			using namespace std::literals;
-			const json::Array& requests = doc.GetRoot().AsMap().at("stat_requests"s).AsArray();
+			const json::Array& requests = doc.GetRoot().AsDict().at("stat_requests"s).AsArray();
 			json::Array answears;
 			answears.reserve(requests.size());
 			for (const auto& node : requests) {
-				const auto& request = node.AsMap();
+				const auto& request = node.AsDict();
 				if (request.at("type"s).AsString() == "Bus"s) {
 					answears.push_back(detail::RequestBusRoute(request, guide));
 				}
@@ -30,7 +31,7 @@ namespace transport_directory {
 		void LoadTransportGuide(const json::Document& doc, transport_catalogue::TransportCatalogue& guide) {
 			using namespace std::literals;
 			std::vector<detail::TransportObject> objects;
-			for (const auto& node : doc.GetRoot().AsMap().at("base_requests"s).AsArray()) {
+			for (const auto& node : doc.GetRoot().AsDict().at("base_requests"s).AsArray()) {
 				objects.push_back(detail::ParseRequestToFillTransportGuide(node));
 			}
 
@@ -104,48 +105,54 @@ namespace transport_directory {
 
 			json::Node StatToJson(const transport_catalogue::StatBusRoute& stat, int request_id) {
 				using namespace std::literals;
-				json::Dict dict;
-				dict["request_id"s] = json::Node(request_id);
 				if (stat.count_stops_) {
-					dict["curvature"s] = json::Node(stat.curvature_);
-					dict["route_length"s] = json::Node(stat.route_length_);
-					dict["stop_count"s] = json::Node(static_cast<int>(stat.count_stops_));
-					dict["unique_stop_count"s] = json::Node(static_cast<int>(stat.count_unique_stops_));
+					return json::Builder().StartDict()
+						.Key("request_id"s).Value(request_id)
+						.Key("curvature"s).Value(stat.curvature_)
+						.Key("route_length"s).Value(stat.curvature_)
+						.Key("route_length"s).Value(stat.route_length_)
+						.Key("stop_count"s).Value(static_cast<int>(stat.count_stops_))
+						.Key("unique_stop_count"s).Value(static_cast<int>(stat.count_unique_stops_)).EndDict().Build();
 				}
 				else {
-					dict["error_message"s] = json::Node("not found"s);
+					return json::Builder().StartDict()
+						.Key("request_id"s).Value(request_id)
+						.Key("error_message"s).Value("not found"s)
+						.EndDict().Build();
 				}
-				return json::Node(std::move(dict));
 			}
 
 			json::Node StatToJson(const transport_catalogue::StatForStop& stat, int request_id) {
 				using namespace std::literals;
-				json::Dict dict;
-				dict["request_id"s] = json::Node(request_id);
 				if (stat.buses_) {
 					json::Array arr;
 					arr.reserve(stat.buses_->size());
 					for (const auto& bus : *stat.buses_) {
-						arr.push_back(json::Node(std::string(bus)));
+						arr.push_back(json::Builder().Value(std::string(bus)).Build());
 					}
-					dict["buses"s] = json::Node(std::move(arr));
+					return json::Builder().StartDict()
+						.Key("request_id"s).Value(request_id)
+						.Key("buses"s).Value(std::move(arr))
+						.EndDict().Build();
 				}
 				else {
-					dict["error_message"s] = json::Node("not found"s);
+					return json::Builder().StartDict()
+						.Key("request_id"s).Value(request_id)
+						.Key("error_message"s).Value("not found"s)
+						.EndDict().Build();
 				}
-				return json::Node(std::move(dict));
 			}
 
 			json::Node SvgToJson(std::string svg_str, int request_id) {
 				using namespace std::literals;
-				json::Dict dict;
-				dict["request_id"s] = json::Node(request_id);
-				dict["map"s] = json::Node(svg_str);
-				return json::Node(dict);
+				return json::Builder().StartDict()
+					.Key("request_id"s).Value(request_id)
+					.Key("map"s).Value(std::move(svg_str))
+					.EndDict().Build();
 			}
 
 			void ParseDistancesToStops(const json::Node& node, TransportObject& obj) {
-				for (const auto& [stop, distance] : node.AsMap()) {
+				for (const auto& [stop, distance] : node.AsDict()) {
 					obj.distances_to.emplace_back(stop, distance.AsDouble());
 				}
 			}
@@ -154,7 +161,7 @@ namespace transport_directory {
 				using namespace std::literals;
 				TransportObject obj;
 				obj.type = TypeTransportObject::BUS;
-				const auto& bus = node.AsMap();
+				const auto& bus = node.AsDict();
 				obj.name = bus.at("name"s).AsString();
 				for (const auto& stop : bus.at("stops"s).AsArray()) {
 					obj.stops.push_back(stop.AsString());
@@ -174,7 +181,7 @@ namespace transport_directory {
 				using namespace std::literals;
 				TransportObject obj;
 				obj.type = TypeTransportObject::STOP;
-				const auto& stop = node.AsMap();
+				const auto& stop = node.AsDict();
 				obj.name = stop.at("name"s).AsString();
 				obj.coordinates.lat = stop.at("latitude"s).AsDouble();
 				obj.coordinates.lng = stop.at("longitude"s).AsDouble();
@@ -184,7 +191,7 @@ namespace transport_directory {
 
 			TransportObject ParseRequestToFillTransportGuide(const json::Node& node) {
 				using namespace std::literals;
-				const std::string& type = node.AsMap().at("type"s).AsString();
+				const std::string& type = node.AsDict().at("type"s).AsString();
 				if (type == "Stop"s) {
 					return ParseStopObject(node);
 				}
@@ -235,7 +242,7 @@ namespace transport_directory {
 			renderer::RenderSettings LoadSettings(const json::Document& doc) {
 				using namespace std::literals;
 				renderer::RenderSettings settings;
-				const json::Dict& render_settings = doc.GetRoot().AsMap().at("render_settings"s).AsMap();
+				const json::Dict& render_settings = doc.GetRoot().AsDict().at("render_settings"s).AsDict();
 				settings.width_ = render_settings.at("width"s).AsDouble();
 				settings.height_ = render_settings.at("height"s).AsDouble();
 				settings.padding_ = render_settings.at("padding"s).AsDouble();
