@@ -7,64 +7,64 @@
 
 namespace json {
 
-	class Builder;
-	class KeyItemContext;
-	class DictItemConctext;
-	class ArrayItemContext;
-
-	class BaseContext {
-	protected:
-		BaseContext(Builder& builder);
-		Builder& builder_;
-	};
-
-	class DictItemContext : virtual public BaseContext {
+	class Builder {
 	public:
-		DictItemContext(Builder& builder);
 
-		KeyItemContext& Key(std::string key);
+		class KeyItemContext;
+		class DictItemContext;
+		class ArrayItemContext;
 
-		Builder& EndDict();
-	};
+		class BaseContext {
+		protected:
+			BaseContext(Builder& builder);
 
-	class ArrayItemContext : virtual public BaseContext {
-	public:
-		ArrayItemContext(Builder& builder);
+			Builder& builder_;
+		};
 
-		ArrayItemContext& Value(Node::Value value);
+		class DictItemContext : public BaseContext {
+		public:
+			DictItemContext(Builder& builder);
 
-		DictItemContext& StartDict();
+			KeyItemContext Key(std::string key);
 
-		ArrayItemContext& StartArray();
+			Builder& EndDict();
 
-		Builder& EndArray();
+		};
 
-	};
+		class StartContainerItemContext: public BaseContext {
+		public:
+			StartContainerItemContext(Builder& builder);
 
-	class KeyItemContext : virtual public BaseContext {
-	public:
-		KeyItemContext(Builder& builder);
+			DictItemContext StartDict();
 
-		DictItemContext& Value(Node::Value value);
+			ArrayItemContext StartArray();
+		};
 
-		ArrayItemContext& StartArray();
+		class ArrayItemContext : public StartContainerItemContext {
+		public:
+			ArrayItemContext(Builder& builder);
 
-		DictItemContext& StartDict();
-	};
+			ArrayItemContext& Value(Node::Value value);
 
+			Builder& EndArray();
 
-	class Builder : virtual public DictItemContext,
-		virtual public ArrayItemContext,
-		virtual public KeyItemContext {
-	public:
+		};
+
+		class KeyItemContext : public StartContainerItemContext {
+		public:
+			KeyItemContext(Builder& builder);
+
+			DictItemContext Value(Node::Value value);
+
+		};
 
 		Builder();
 
 		Builder& Value(Node::Value value);
 
-		DictItemContext& StartDict();
+		DictItemContext StartDict();
 
-		ArrayItemContext& StartArray();
+		ArrayItemContext StartArray();
 
 		json::Node Build();
 
@@ -72,10 +72,14 @@ namespace json {
 
 		Builder& EndArray();
 
-		KeyItemContext& Key(std::string key);
+		KeyItemContext Key(std::string key);
 
 	private:
+
+		bool AddContainer(Node node);
+
 		std::optional<Node> root_;
 		std::vector<Node*> nodes_stack_;
 	};
+
 }// namespace json
