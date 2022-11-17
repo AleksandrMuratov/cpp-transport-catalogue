@@ -72,7 +72,7 @@ namespace renderer {
         : settings_(settings) {}
 
     std::vector<std::unique_ptr<svg::Drawable>> MapRenderer::CreateArrayObjects(std::vector<const transport_directory::domain::BusRoute*> bus_routes) const {
-        std::map<std::string_view, transport_directory::domain::Stop*> stops_for_draw;
+        std::map<std::string_view, const transport_directory::domain::Stop*> stops_for_draw;
         std::vector<geo::Coordinates> coors;
         for (const auto& bus_route : bus_routes) {
             for (const auto& stop : bus_route->route) {

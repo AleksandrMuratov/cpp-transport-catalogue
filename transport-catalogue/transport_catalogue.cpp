@@ -10,7 +10,33 @@ namespace transport_directory {
 			count_unique_stops_(count_unique_stops),
 			route_length_(route_length),
 			curvature_(curvature),
-			bus_route_(bus_route) {}
+			bus_route_(bus_route) 
+		{}
+
+		StatBusRoute& StatBusRoute::SetName(std::string name) {
+			name_ = std::move(name);
+			return *this;
+		}
+		StatBusRoute& StatBusRoute::SetCountStops(size_t count_stops) {
+			count_stops_ = count_stops;
+			return *this;
+		}
+		StatBusRoute& StatBusRoute::SetCountUniqueStops(size_t count_unique_stops) {
+			count_unique_stops_ = count_unique_stops;
+			return *this;
+		}
+		StatBusRoute& StatBusRoute::SetRouteLength(int route_length) {
+			route_length_ = route_length;
+			return *this;
+		}
+		StatBusRoute& StatBusRoute::SetCurvate(double curvate) {
+			curvature_ = curvate;
+			return *this;
+		}
+		StatBusRoute& StatBusRoute::SetBusRoute(const domain::BusRoute* bus_route) {
+			bus_route_ = bus_route;
+			return *this;
+		}
 
 		StatForStop::StatForStop(std::string_view name_stop, const std::set<std::string_view>* buses)
 			: name_stop_(name_stop),
@@ -24,15 +50,13 @@ namespace transport_directory {
 		}
 
 		void TransportCatalogue::AddBusRoute(std::string name_bus, std::vector<std::string> stops, bool is_roundtrip) {
-			std::vector<domain::Stop*> route(stops.size());
+			std::vector<const domain::Stop*> route(stops.size());
 			auto& bus = bus_routes_.emplace_back(std::move(name_bus), std::move(route));
 			for (size_t i = 0; i < bus.route.size(); ++i) {
 				bus.route[i] = index_stops_[stops[i]];
 				stop_buses_[stops[i]].insert(bus.name);
 			}
-			if (is_roundtrip) {
-				bus.is_roundtrip = is_roundtrip;
-			}
+			bus.is_roundtrip = is_roundtrip;
 			index_buses_.emplace(bus.name, &bus);
 		}
 
@@ -68,6 +92,10 @@ namespace transport_directory {
 			return bus_routes_;
 		}
 
+		const std::deque<domain::Stop>& TransportCatalogue::GetStops() const {
+			return stops_;
+		}
+
 		size_t TransportCatalogue::DistancesHasher::operator()(const std::pair<const domain::Stop*, const domain::Stop*>& p) const {
 			return hasher((uintptr_t)p.first) + 47 * hasher((uintptr_t)p.second);
 		}
@@ -79,7 +107,7 @@ namespace transport_directory {
 			}
 			const domain::BusRoute& bus_route = *bus_route_ptr;
 			size_t count_stops = bus_route.route.size();
-			std::unordered_set<domain::Stop*> unique_stops;
+			std::unordered_set<const domain::Stop*> unique_stops;
 			unique_stops.insert(bus_route.route[0]);
 			double distance = 0.0;
 			int route_length = 0;
@@ -90,7 +118,9 @@ namespace transport_directory {
 			}
 			size_t count_unique_stops = unique_stops.size();
 			double curvature = static_cast<double>(route_length) / distance;
-			return StatBusRoute(std::string(name_bus), count_stops, count_unique_stops, route_length, curvature, bus_route_ptr);
+			return StatBusRoute().SetName(std::string(name_bus)).SetCountStops(count_stops)
+				.SetCountUniqueStops(count_unique_stops).SetRouteLength(route_length)
+				.SetCurvate(curvature).SetBusRoute(bus_route_ptr);
 		}
 
 		StatForStop TransportCatalogue::RequestStatForStop(std::string_view name_stop) const {

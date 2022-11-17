@@ -16,9 +16,9 @@ namespace transport_directory {
 
 		struct BusRoute {
 			BusRoute() = default;
-			BusRoute(std::string name_bus, std::vector<Stop*> bus_route);
+			BusRoute(std::string name_bus, std::vector<const Stop*> bus_route);
 			std::string name;
-			std::vector<Stop*> route;
+			std::vector<const Stop*> route;
 			bool is_roundtrip = false;
 		};
 

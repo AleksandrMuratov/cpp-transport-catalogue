@@ -11,6 +11,7 @@
 #include <set>
 #include <cstdint>
 #include <memory>
+#include <iostream>
 
 #include "domain.h"
 #include "geo.h"
@@ -19,9 +20,17 @@ namespace transport_directory {
 	namespace transport_catalogue {
 
 		struct StatBusRoute {
+			StatBusRoute() = default;
 
 			StatBusRoute(std::string name, size_t count_stops = 0, size_t count_unique_stops = 0, int route_length = 0, double curvate = 0.0, const domain::BusRoute* bus_route_ = nullptr);
 			
+			StatBusRoute& SetName(std::string name);
+			StatBusRoute& SetCountStops(size_t count_stops);
+			StatBusRoute& SetCountUniqueStops(size_t count_unique_stops);
+			StatBusRoute& SetRouteLength(int route_length);
+			StatBusRoute& SetCurvate(double curvate);
+			StatBusRoute& SetBusRoute(const domain::BusRoute* bus_route);
+
 			std::string name_;
 			size_t count_stops_ = 0;
 			size_t count_unique_stops_ = 0;
@@ -47,6 +56,7 @@ namespace transport_directory {
 
 			void SetDistance(const domain::Stop* from, const domain::Stop* to, int distance);
 
+			//return value in meters
 			int GetDistance(const domain::Stop* from, const domain::Stop* to) const;
 
 			StatBusRoute RequestStatBusRoute(std::string_view name_bus) const;
@@ -58,6 +68,8 @@ namespace transport_directory {
 			const domain::Stop* SearchStop(std::string_view name_stop) const;
 
 			const std::deque<domain::BusRoute>& GetBusRoutes() const;
+
+			const std::deque<domain::Stop>& GetStops() const;
 
 		private:
 

@@ -9,21 +9,28 @@
 #include "transport_catalogue.h"
 #include "map_renderer.h"
 #include "svg.h"
+#include "transport_router.h"
 
 namespace transport_directory {
 	namespace json_reader {
 
-		void PrintAnswearsForRequests(const json::Document& doc, transport_catalogue::TransportCatalogue guide, std::ostream& os = std::cout);
+		void PrintAnswearsForRequests(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide, std::ostream& os = std::cout);
 
 		void LoadTransportGuide(const json::Document& doc, transport_catalogue::TransportCatalogue& guide);
 
 		renderer::MapRenderer CreateRenderer(const json::Document& doc);
 
-		svg::Document CreateSvgDocumentMap(const renderer::MapRenderer& renderer, transport_catalogue::TransportCatalogue guide);
+		svg::Document CreateSvgDocumentMap(const renderer::MapRenderer& renderer, const transport_catalogue::TransportCatalogue& guide);
 
-		void PrintMapToSvg(const json::Document& doc, transport_catalogue::TransportCatalogue guide, std::ostream& os = std::cout);
+		void PrintMapToSvg(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide, std::ostream& os = std::cout);
 
 		namespace detail {
+
+			transport_router::TransportRouter CreateTransportRouter(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide);
+
+			transport_router::TransportGraph::RoutingSettings GetRoutingSettings(const json::Document& doc);
+
+			json::Node RequestFindRoute(const json::Dict& request, const transport_router::TransportRouter& router);
 
 			json::Node RequestBusRoute(const json::Dict& request, const transport_catalogue::TransportCatalogue& guide);
 
@@ -36,6 +43,10 @@ namespace transport_directory {
 			json::Node StatToJson(const transport_catalogue::StatForStop& stat, int request_id);
 
 			json::Node SvgToJson(std::string svg_str, int request_id);
+
+			json::Node RouteInfoToJson(const transport_router::TransportRouter::RouteInfo& route_info, int request_id);
+
+			json::Node ErrorMessageNotFound(int id);
 
 			enum class TypeTransportObject {
 				BUS,

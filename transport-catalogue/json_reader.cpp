@@ -7,26 +7,33 @@
 namespace transport_directory {
 	namespace json_reader {
 
-		void PrintAnswearsForRequests(const json::Document& doc, transport_catalogue::TransportCatalogue guide, std::ostream& os) {
+		void PrintAnswearsForRequests(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide, std::ostream& os) {
 			using namespace std::literals;
 			const json::Array& requests = doc.GetRoot().AsDict().at("stat_requests"s).AsArray();
 			json::Array answears;
+			std::string type = "type"s;
 			answears.reserve(requests.size());
+			auto router(detail::CreateTransportRouter(doc, guide));
 			for (const auto& node : requests) {
 				const auto& request = node.AsDict();
-				if (request.at("type"s).AsString() == "Bus"s) {
+				if (request.at(type).AsString() == "Bus"s) {
 					answears.push_back(detail::RequestBusRoute(request, guide));
 				}
-				else if(request.at("type"s).AsString() == "Stop"s) {
+				else if(request.at(type).AsString() == "Stop"s) {
 					answears.push_back(detail::RequestBusesForStop(request, guide));
 				}
-				else if (request.at("type"s).AsString() == "Map"s) {
+				else if (request.at(type).AsString() == "Map"s) {
 					answears.push_back(detail::RequestMap(doc, request, guide));
+				}
+				else if (request.at(type).AsString() == "Route"s) {
+					answears.push_back(detail::RequestFindRoute(request, router));
 				}
 			}
 			json::Document doc_with_answears(std::move(answears));
 			json::Print(doc_with_answears, os);
 		}
+
+
 
 		void LoadTransportGuide(const json::Document& doc, transport_catalogue::TransportCatalogue& guide) {
 			using namespace std::literals;
@@ -61,7 +68,7 @@ namespace transport_directory {
 			return renderer::MapRenderer(settings);
 		}
 
-		svg::Document CreateSvgDocumentMap(const renderer::MapRenderer& renderer, transport_catalogue::TransportCatalogue guide) {
+		svg::Document CreateSvgDocumentMap(const renderer::MapRenderer& renderer, const transport_catalogue::TransportCatalogue& guide) {
 			using namespace std::literals;
 			std::vector<const domain::BusRoute*> bus_routes;
 			for (const auto& bus_route : guide.GetBusRoutes()) {
@@ -78,11 +85,32 @@ namespace transport_directory {
 			return doc_for_draw;
 		}
 
-		void PrintMapToSvg(const json::Document& doc, transport_catalogue::TransportCatalogue guide, std::ostream& os) {
+		void PrintMapToSvg(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide, std::ostream& os) {
 			CreateSvgDocumentMap(CreateRenderer(doc), guide).Render(os);
 		}
 
 		namespace detail {
+
+			transport_router::TransportRouter CreateTransportRouter(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide) {
+				transport_router::TransportGraph::RoutingSettings routing_settings(GetRoutingSettings(doc));
+				return transport_router::TransportRouter(transport_router::TransportGraph(guide, routing_settings));
+			}
+
+			transport_router::TransportGraph::RoutingSettings GetRoutingSettings(const json::Document& doc) {
+				using namespace std::literals;
+				const json::Dict& settings = doc.GetRoot().AsDict().at("routing_settings"s).AsDict();
+				return { static_cast<size_t>(settings.at("bus_wait_time"s).AsInt()), settings.at("bus_velocity"s).AsDouble() };
+			}
+
+			json::Node RequestFindRoute(const json::Dict& request, const transport_router::TransportRouter& router) {
+				using namespace std::literals;
+				auto route_info = router.BuildRoute(request.at("from"s).AsString(), request.at("to"s).AsString());
+				int request_id = request.at("id"s).AsInt();
+				if (!route_info) {
+					return ErrorMessageNotFound(request_id);
+				}
+				return RouteInfoToJson(*route_info, request_id);
+			}
 
 			json::Node RequestBusRoute(const json::Dict& request, const transport_catalogue::TransportCatalogue& guide) {
 				using namespace std::literals;
@@ -115,10 +143,7 @@ namespace transport_directory {
 						.Key("unique_stop_count"s).Value(static_cast<int>(stat.count_unique_stops_)).EndDict().Build();
 				}
 				else {
-					return json::Builder().StartDict()
-						.Key("request_id"s).Value(request_id)
-						.Key("error_message"s).Value("not found"s)
-						.EndDict().Build();
+					return ErrorMessageNotFound(request_id);
 				}
 			}
 
@@ -136,10 +161,7 @@ namespace transport_directory {
 						.EndDict().Build();
 				}
 				else {
-					return json::Builder().StartDict()
-						.Key("request_id"s).Value(request_id)
-						.Key("error_message"s).Value("not found"s)
-						.EndDict().Build();
+					return ErrorMessageNotFound(request_id);
 				}
 			}
 
@@ -148,6 +170,41 @@ namespace transport_directory {
 				return json::Builder().StartDict()
 					.Key("request_id"s).Value(request_id)
 					.Key("map"s).Value(std::move(svg_str))
+					.EndDict().Build();
+			}
+
+			json::Node RouteInfoToJson(const transport_router::TransportRouter::RouteInfo& route_info, int request_id) {
+				using namespace std::literals;
+				json::Array items;
+				for (const auto& edge : route_info.edges) {
+					if (edge.GetType() == transport_router::TransportGraph::EdgeTransportGraph::TypeTransportObject::STOP) {
+						items.push_back(json::Builder().StartDict()
+							.Key("type"s).Value("Wait"s)
+							.Key("stop_name"s).Value(std::string(edge.GetName()))
+							.Key("time"s).Value(edge.GetWait())
+							.EndDict().Build());
+					}
+					else {
+						items.push_back(json::Builder().StartDict()
+							.Key("type"s).Value("Bus"s)
+							.Key("bus"s).Value(std::string(edge.GetName()))
+							.Key("span_count"s).Value(static_cast<int>(edge.GetSpunCount()))
+							.Key("time"s).Value(edge.GetWait())
+							.EndDict().Build());
+					}
+				}
+				return json::Builder().StartDict()
+					.Key("request_id"s).Value(request_id)
+					.Key("total_time"s).Value(route_info.wait)
+					.Key("items"s).Value(std::move(items))
+					.EndDict().Build();
+			}
+
+			json::Node ErrorMessageNotFound(int request_id) {
+				using namespace std::literals;
+				return json::Builder().StartDict()
+					.Key("request_id"s).Value(request_id)
+					.Key("error_message"s).Value("not found"s)
 					.EndDict().Build();
 			}
 
