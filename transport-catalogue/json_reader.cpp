@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <sstream>
+#include <variant>
 
 namespace transport_directory {
 	namespace json_reader {
@@ -13,7 +14,7 @@ namespace transport_directory {
 			json::Array answears;
 			std::string type = "type"s;
 			answears.reserve(requests.size());
-			auto router(detail::CreateTransportRouter(doc, guide));
+			transport_router::TransportRouter router(guide, detail::GetRoutingSettings(doc));
 			for (const auto& node : requests) {
 				const auto& request = node.AsDict();
 				if (request.at(type).AsString() == "Bus"s) {
@@ -91,12 +92,7 @@ namespace transport_directory {
 
 		namespace detail {
 
-			transport_router::TransportRouter CreateTransportRouter(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide) {
-				transport_router::TransportGraph::RoutingSettings routing_settings(GetRoutingSettings(doc));
-				return transport_router::TransportRouter(transport_router::TransportGraph(guide, routing_settings));
-			}
-
-			transport_router::TransportGraph::RoutingSettings GetRoutingSettings(const json::Document& doc) {
+			transport_router::TransportRouter::RoutingSettings GetRoutingSettings(const json::Document& doc) {
 				using namespace std::literals;
 				const json::Dict& settings = doc.GetRoot().AsDict().at("routing_settings"s).AsDict();
 				return { static_cast<size_t>(settings.at("bus_wait_time"s).AsInt()), settings.at("bus_velocity"s).AsDouble() };
@@ -176,26 +172,28 @@ namespace transport_directory {
 			json::Node RouteInfoToJson(const transport_router::TransportRouter::RouteInfo& route_info, int request_id) {
 				using namespace std::literals;
 				json::Array items;
-				for (const auto& edge : route_info.edges) {
-					if (edge.GetType() == transport_router::TransportGraph::EdgeTransportGraph::TypeTransportObject::STOP) {
+				for (const auto& data_edge : route_info.edges) {
+					if (std::holds_alternative<const domain::Stop*>(data_edge.obj)) {
+						const domain::Stop* stop = std::get<const domain::Stop*>(data_edge.obj);
 						items.push_back(json::Builder().StartDict()
 							.Key("type"s).Value("Wait"s)
-							.Key("stop_name"s).Value(std::string(edge.GetName()))
-							.Key("time"s).Value(edge.GetWait())
+							.Key("stop_name"s).Value(stop->name)
+							.Key("time"s).Value(data_edge.weight)
 							.EndDict().Build());
 					}
 					else {
+						const domain::BusRoute* bus = std::get<const domain::BusRoute*>(data_edge.obj);
 						items.push_back(json::Builder().StartDict()
 							.Key("type"s).Value("Bus"s)
-							.Key("bus"s).Value(std::string(edge.GetName()))
-							.Key("span_count"s).Value(static_cast<int>(edge.GetSpunCount()))
-							.Key("time"s).Value(edge.GetWait())
+							.Key("bus"s).Value(bus->name)
+							.Key("span_count"s).Value(data_edge.spun_count)
+							.Key("time"s).Value(data_edge.weight)
 							.EndDict().Build());
 					}
 				}
 				return json::Builder().StartDict()
 					.Key("request_id"s).Value(request_id)
-					.Key("total_time"s).Value(route_info.wait)
+					.Key("total_time"s).Value(route_info.weight)
 					.Key("items"s).Value(std::move(items))
 					.EndDict().Build();
 			}

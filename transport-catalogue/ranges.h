@@ -9,8 +9,7 @@ namespace ranges {
 
         Range(It begin, It end)
             : begin_(begin)
-            , end_(end)
-            , size_(std::distance(begin_, end_)) {
+            , end_(end) {
         }
         It begin() const {
             return begin_;
@@ -19,14 +18,9 @@ namespace ranges {
             return end_;
         }
 
-        size_t size() const {
-            return size_;
-        }
-
     private:
         It begin_;
         It end_;
-        size_t size_;
     };
 
     template <typename C>

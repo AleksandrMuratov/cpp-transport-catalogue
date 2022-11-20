@@ -26,9 +26,7 @@ namespace transport_directory {
 
 		namespace detail {
 
-			transport_router::TransportRouter CreateTransportRouter(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide);
-
-			transport_router::TransportGraph::RoutingSettings GetRoutingSettings(const json::Document& doc);
+			transport_router::TransportRouter::RoutingSettings GetRoutingSettings(const json::Document& doc);
 
 			json::Node RequestFindRoute(const json::Dict& request, const transport_router::TransportRouter& router);
 
