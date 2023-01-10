@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+import "transport_catalogue.proto";
+
+import "graph.proto";
+
+import "map_renderer.proto";
+
+package transport_catalogue_serialize;
+
+message RoutingSettings{
+	uint32 bus_wait_time = 1;
+	double bus_velocity = 2;
+}
+
+message EdgeId{
+	uint32 id = 1;
+}
+
+message RouteInternalData{
+	double weight = 1;
+	EdgeId prev_edge = 2;
+	bool is_init = 3;
+}
+
+message ArrayRouteInternalData{
+	repeated RouteInternalData array_route_internal_data = 1;
+}
+
+message StopId{
+	uint32 stop = 1;
+	uint32 id = 2;
+}
+
+message StopName{
+	uint32 name = 1;
+}
+
+message BusName{
+	uint32 name = 1;
+}
+
+message DataEdge{
+	oneof variant{
+		StopName stop = 1;
+		BusName bus = 2;
+	}
+	double weight = 3;
+	int32 spun_count = 4;
+}
+
+message EdgeIdData{
+	uint32 edge_id = 1;
+	DataEdge data_edge = 2;
+}
+
+message DataForTransportRouter{
+	TransportCatalogue guide = 1;
+	RenderSettings render_settings = 2;
+	RoutingSettings routing_settings = 3;
+	Graph graph = 4;
+	repeated ArrayRouteInternalData data_of_router = 5;
+	repeated StopId stop_id = 6;
+	repeated EdgeIdData edge_id_data = 7;
+}

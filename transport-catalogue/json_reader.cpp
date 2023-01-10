@@ -1,40 +1,45 @@
 #include "json_reader.h"
 #include "json_builder.h"
+#include "serialization.h"
+
 #include <stdexcept>
 #include <algorithm>
 #include <sstream>
 #include <variant>
+#include <fstream>
+#include <filesystem>
 
 namespace transport_directory {
 	namespace json_reader {
 
-		void PrintAnswearsForRequests(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide, std::ostream& os) {
+		void PrintAnswearsForRequests(const json::Document& doc, const DownloadedDataForTransportRouter& data, std::ostream& os) {
 			using namespace std::literals;
 			const json::Array& requests = doc.GetRoot().AsDict().at("stat_requests"s).AsArray();
 			json::Array answears;
 			std::string type = "type"s;
 			answears.reserve(requests.size());
-			transport_router::TransportRouter router(guide, detail::GetRoutingSettings(doc));
+			std::unique_ptr<transport_router::TransportRouter> router_ptr;
+			router_ptr = data.data_for_router ?
+				std::make_unique<transport_router::TransportRouter>(data.guide, data.routing_settings, *data.data_for_router)
+				: std::make_unique<transport_router::TransportRouter>(data.guide, data.routing_settings);
 			for (const auto& node : requests) {
 				const auto& request = node.AsDict();
 				if (request.at(type).AsString() == "Bus"s) {
-					answears.push_back(detail::RequestBusRoute(request, guide));
+					answears.push_back(detail::RequestBusRoute(request, data.guide));
 				}
 				else if(request.at(type).AsString() == "Stop"s) {
-					answears.push_back(detail::RequestBusesForStop(request, guide));
+					answears.push_back(detail::RequestBusesForStop(request, data.guide));
 				}
 				else if (request.at(type).AsString() == "Map"s) {
-					answears.push_back(detail::RequestMap(doc, request, guide));
+					answears.push_back(detail::RequestMap(data.render_settings, request, data.guide));
 				}
 				else if (request.at(type).AsString() == "Route"s) {
-					answears.push_back(detail::RequestFindRoute(request, router));
+					answears.push_back(detail::RequestFindRoute(request, *router_ptr));
 				}
 			}
 			json::Document doc_with_answears(std::move(answears));
 			json::Print(doc_with_answears, os);
 		}
-
-
 
 		void LoadTransportGuide(const json::Document& doc, transport_catalogue::TransportCatalogue& guide) {
 			using namespace std::literals;
@@ -64,11 +69,6 @@ namespace transport_directory {
 				});
 		}
 
-		renderer::MapRenderer CreateRenderer(const json::Document& doc) {
-			renderer::RenderSettings settings(detail::LoadSettings(doc));
-			return renderer::MapRenderer(settings);
-		}
-
 		svg::Document CreateSvgDocumentMap(const renderer::MapRenderer& renderer, const transport_catalogue::TransportCatalogue& guide) {
 			using namespace std::literals;
 			std::vector<const domain::BusRoute*> bus_routes;
@@ -86,13 +86,45 @@ namespace transport_directory {
 			return doc_for_draw;
 		}
 
-		void PrintMapToSvg(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide, std::ostream& os) {
-			CreateSvgDocumentMap(CreateRenderer(doc), guide).Render(os);
+		void PrintMapToSvg(const renderer::RenderSettings& render_settings, const transport_catalogue::TransportCatalogue& guide, std::ostream& os) {
+			CreateSvgDocumentMap(renderer::MapRenderer(render_settings), guide).Render(os);
+		}
+
+		bool SaveDataToFile(const json::Document& doc, const DownloadedDataForTransportRouter& data) {
+			using namespace std::literals;
+			std::filesystem::path file = doc.GetRoot().AsDict().at("serialization_settings"s).AsDict().at("file").AsString();
+			std::ofstream out(file, std::ios::binary);
+			if (!out) {
+				return false;
+			}
+			if (serialization_tr_catalogue::SaveDataForTransportRouter(out, data)) {
+				return true;
+			}
+			return false;
+		}
+
+		DownloadedDataForTransportRouter LoadDataFromFile(const json::Document& doc) {
+			using namespace std::literals;
+			std::filesystem::path file = doc.GetRoot().AsDict().at("serialization_settings"s).AsDict().at("file").AsString();
+			std::ifstream ifs(file, std::ios::binary);
+			DownloadedDataForTransportRouter data;
+			if (ifs.good()) {
+				data = serialization_tr_catalogue::LoadDataForTransportRouter(ifs);
+			}
+			return data;
+		}
+
+		DownloadedDataForTransportRouter LoadDataFromJson(const json::Document& doc) {
+			DownloadedDataForTransportRouter data;
+			LoadTransportGuide(doc, data.guide);
+			data.render_settings = detail::LoadRenderSettings(doc);
+			data.routing_settings = detail::LoadRoutingSettings(doc);
+			return data;
 		}
 
 		namespace detail {
 
-			transport_router::TransportRouter::RoutingSettings GetRoutingSettings(const json::Document& doc) {
+			transport_router::TransportRouter::RoutingSettings LoadRoutingSettings(const json::Document& doc) {
 				using namespace std::literals;
 				const json::Dict& settings = doc.GetRoot().AsDict().at("routing_settings"s).AsDict();
 				return { static_cast<size_t>(settings.at("bus_wait_time"s).AsInt()), settings.at("bus_velocity"s).AsDouble() };
@@ -120,10 +152,10 @@ namespace transport_directory {
 				return detail::StatToJson(stat, request.at("id"s).AsInt());
 			}
 
-			json::Node RequestMap(const json::Document& doc, const json::Dict& request, const transport_catalogue::TransportCatalogue& guide) {
+			json::Node RequestMap(const renderer::RenderSettings& render_settings, const json::Dict& request, const transport_catalogue::TransportCatalogue& guide) {
 				using namespace std::literals;
 				std::ostringstream os;
-				json_reader::PrintMapToSvg(doc, guide, os);
+				json_reader::PrintMapToSvg(render_settings, guide, os);
 				return detail::SvgToJson(os.str(), request.at("id"s).AsInt());
 			}
 
@@ -294,7 +326,7 @@ namespace transport_directory {
 				return color_palette;
 			}
 
-			renderer::RenderSettings LoadSettings(const json::Document& doc) {
+			renderer::RenderSettings LoadRenderSettings(const json::Document& doc) {
 				using namespace std::literals;
 				renderer::RenderSettings settings;
 				const json::Dict& render_settings = doc.GetRoot().AsDict().at("render_settings"s).AsDict();

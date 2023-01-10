@@ -1,4 +1,6 @@
 #include "transport_catalogue.h"
+
+#include <unordered_set>
 #include <iomanip>
 
 namespace transport_directory {
@@ -94,6 +96,30 @@ namespace transport_directory {
 
 		const std::deque<domain::Stop>& TransportCatalogue::GetStops() const {
 			return stops_;
+		}
+
+		const std::unordered_map<std::pair<const domain::Stop*, const domain::Stop*>, int, TransportCatalogue::DistancesHasher>& TransportCatalogue::GetDistances() const {
+			return distances_;
+		}
+
+		const std::unordered_map<std::string_view, size_t>& TransportCatalogue::GetIndexedOfStops() const {
+			if (!indexes_of_stops) {
+				indexes_of_stops = std::make_unique<std::unordered_map<std::string_view, size_t>>();
+				for (size_t i = 0; i < stops_.size(); ++i) {
+					indexes_of_stops->emplace(stops_[i].name, i);
+				}
+			}
+			return *indexes_of_stops;
+		}
+
+		const std::unordered_map<std::string_view, size_t>& TransportCatalogue::GetIndexesOfBusRoutes() const {
+			if (!indexes_of_bus_routes) {
+				indexes_of_bus_routes = std::make_unique<std::unordered_map<std::string_view, size_t>>();
+				for (size_t i = 0; i < bus_routes_.size(); ++i) {
+					indexes_of_bus_routes->emplace(bus_routes_[i].name, i);
+				}
+			}
+			return *indexes_of_bus_routes;
 		}
 
 		size_t TransportCatalogue::DistancesHasher::operator()(const std::pair<const domain::Stop*, const domain::Stop*>& p) const {

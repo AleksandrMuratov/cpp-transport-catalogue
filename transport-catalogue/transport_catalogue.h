@@ -1,20 +1,14 @@
 #pragma once
+#include "domain.h"
 
-#include <unordered_set>
 #include <unordered_map>
-#include <vector>
 #include <string>
 #include <string_view>
-#include <iostream>
-#include <functional>
 #include <deque>
 #include <set>
 #include <cstdint>
 #include <memory>
-#include <iostream>
-
-#include "domain.h"
-#include "geo.h"
+#include <type_traits>
 
 namespace transport_directory {
 	namespace transport_catalogue {
@@ -49,6 +43,10 @@ namespace transport_directory {
 
 		class TransportCatalogue {
 		public:
+			struct DistancesHasher {
+				std::hash<uintptr_t> hasher;
+				size_t operator()(const std::pair<const domain::Stop*, const domain::Stop*>& p) const;
+			};
 
 			void AddStop(std::string name_stop, geo::Coordinates coordinates);
 
@@ -71,12 +69,12 @@ namespace transport_directory {
 
 			const std::deque<domain::Stop>& GetStops() const;
 
-		private:
+			const std::unordered_map<std::pair<const domain::Stop*, const domain::Stop*>, int, DistancesHasher>& GetDistances() const;
 
-			struct DistancesHasher {
-				std::hash<uintptr_t> hasher;
-				size_t operator()(const std::pair<const domain::Stop*, const domain::Stop*>& p) const;
-			};
+			const std::unordered_map<std::string_view, size_t>& GetIndexedOfStops() const;
+
+			const std::unordered_map<std::string_view, size_t>& GetIndexesOfBusRoutes() const;
+		private:
 
 			std::deque<domain::Stop> stops_;
 			std::deque<domain::BusRoute> bus_routes_;
@@ -84,9 +82,11 @@ namespace transport_directory {
 			std::unordered_map<std::string_view, domain::BusRoute*> index_buses_;
 			std::unordered_map<std::pair<const domain::Stop*, const domain::Stop*>, int, DistancesHasher> distances_;
 			std::unordered_map<std::string_view, std::set<std::string_view>> stop_buses_;
-		};
 
-		
+			//integer indexes for serialization
+			mutable std::unique_ptr<std::unordered_map<std::string_view, size_t>> indexes_of_stops;
+			mutable std::unique_ptr<std::unordered_map<std::string_view, size_t>> indexes_of_bus_routes;
+		};
 
 	}//end namespace transport_catalogue
 }// end namespace transport_directory

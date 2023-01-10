@@ -1,4 +1,5 @@
 #include "map_renderer.h"
+
 #include <map>
 
 namespace renderer {

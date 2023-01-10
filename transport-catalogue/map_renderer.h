@@ -1,7 +1,6 @@
 #pragma once
-
-#include "geo.h"
 #include "svg.h"
+#include "geo.h"
 #include "domain.h"
 
 #include <algorithm>

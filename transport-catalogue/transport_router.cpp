@@ -15,6 +15,15 @@ namespace transport_directory {
 			router_ = std::make_unique<graph::Router<Weight>>(*graph_);
 		}
 
+		TransportRouter::TransportRouter(const transport_catalogue::TransportCatalogue& guide, RoutingSettings routing_settings, const DownloadedData& data_for_router)
+			: guide_(guide)
+			, routing_settings_(std::move(routing_settings))
+			, stop_id_(data_for_router.stop_id)
+			, edge_id_data_(data_for_router.edge_id_data)
+			, graph_(std::make_unique<Graph>(*data_for_router.graph))
+			, router_(std::make_unique<graph::Router<Weight>>(*graph_, data_for_router.data_of_router))
+		{}
+
 		std::optional<TransportRouter::RouteInfo> TransportRouter::BuildRoute(std::string_view from, std::string_view to) const {
 			const domain::Stop* start = guide_.SearchStop(from);
 			const domain::Stop* finish = guide_.SearchStop(to);
@@ -38,6 +47,31 @@ namespace transport_directory {
 				result.edges.push_back(edge_id_data_.at(id));
 			}
 			return result;
+		}
+
+		TransportRouter::DownloadedData TransportRouter::GetDataForTransRouter() const {
+			DownloadedData data;
+			data.graph = std::make_unique<Graph>(*graph_);
+			data.edge_id_data = edge_id_data_;
+			data.stop_id = stop_id_;
+			data.data_of_router = router_->GetData();
+			return data;
+		}
+
+		const std::unordered_map<const domain::Stop*, EdgeId>& TransportRouter::GetStopId() const {
+			return stop_id_;
+		}
+
+		const std::unordered_map<EdgeId, TransportRouter::DataEdge>& TransportRouter::GetEdgeIdData() const {
+			return edge_id_data_;
+		}
+
+		const Graph& TransportRouter::GetGraph() const {
+			return *graph_;
+		}
+
+		const graph::Router<Weight>& TransportRouter::GetRouter() const {
+			return *router_;
 		}
 
 		void TransportRouter::ConstructGraphAndFillGraphByStops() {
@@ -66,7 +100,7 @@ namespace transport_directory {
 			}
 		}
 
-		TransportRouter::Weight TransportRouter::ComputeWeightForRoute(ranges::Range<std::vector<const domain::Stop*>::const_iterator> route) const {
+		Weight TransportRouter::ComputeWeightForRoute(ranges::Range<std::vector<const domain::Stop*>::const_iterator> route) const {
 			int64_t length = 0;//meters
 			for (auto it = std::next(route.begin()); it != route.end(); ++it) {
 				length += guide_.GetDistance(*std::prev(it), *it);

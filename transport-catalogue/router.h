@@ -1,5 +1,4 @@
 #pragma once
-
 #include "graph.h"
 
 #include <algorithm>
@@ -20,7 +19,15 @@ namespace graph {
         using Graph = DirectedWeightedGraph<Weight>;
 
     public:
+        struct RouteInternalData {
+            Weight weight;
+            std::optional<EdgeId> prev_edge;
+        };
+        using RoutesInternalData = std::vector<std::vector<std::optional<RouteInternalData>>>;
+
         explicit Router(const Graph& graph);
+
+        Router(const Graph& graph, RoutesInternalData routes_internal_data);
 
         struct RouteInfo {
             Weight weight;
@@ -29,12 +36,9 @@ namespace graph {
 
         std::optional<RouteInfo> BuildRoute(VertexId from, VertexId to) const;
 
+        const RoutesInternalData& GetData() const;
+
     private:
-        struct RouteInternalData {
-            Weight weight;
-            std::optional<EdgeId> prev_edge;
-        };
-        using RoutesInternalData = std::vector<std::vector<std::optional<RouteInternalData>>>;
 
         void InitializeRoutesInternalData(const Graph& graph) {
             const size_t vertex_count = graph.GetVertexCount();
@@ -95,6 +99,12 @@ namespace graph {
     }
 
     template <typename Weight>
+    Router<Weight>::Router(const Graph& graph, RoutesInternalData routes_internal_data)
+        : graph_(graph)
+        , routes_internal_data_(std::move(routes_internal_data))
+    {}
+
+    template <typename Weight>
     std::optional<typename Router<Weight>::RouteInfo> Router<Weight>::BuildRoute(VertexId from,
         VertexId to) const {
         const auto& route_internal_data = routes_internal_data_.at(from).at(to);
@@ -112,6 +122,11 @@ namespace graph {
         std::reverse(edges.begin(), edges.end());
 
         return RouteInfo{ weight, std::move(edges) };
+    }
+
+    template <typename Weight>
+    const typename Router<Weight>::RoutesInternalData& Router<Weight>::GetData() const {
+        return routes_internal_data_;
     }
 
 }  // namespace graph

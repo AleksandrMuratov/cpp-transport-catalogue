@@ -1,9 +1,4 @@
 #pragma once
-#include <iostream>
-#include <vector>
-#include <string>
-#include <string_view>
-
 #include "geo.h"
 #include "json.h"
 #include "transport_catalogue.h"
@@ -11,22 +6,39 @@
 #include "svg.h"
 #include "transport_router.h"
 
+#include <iostream>
+#include <vector>
+#include <string>
+#include <string_view>
+#include <optional>
+
 namespace transport_directory {
 	namespace json_reader {
 
-		void PrintAnswearsForRequests(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide, std::ostream& os = std::cout);
+		struct DownloadedDataForTransportRouter {
+			transport_catalogue::TransportCatalogue guide;
+			renderer::RenderSettings render_settings;
+			transport_router::TransportRouter::RoutingSettings routing_settings;
+			std::unique_ptr<transport_router::TransportRouter::DownloadedData> data_for_router;
+		};
+
+		void PrintAnswearsForRequests(const json::Document& doc, const DownloadedDataForTransportRouter& data, std::ostream& os = std::cout);
 
 		void LoadTransportGuide(const json::Document& doc, transport_catalogue::TransportCatalogue& guide);
 
-		renderer::MapRenderer CreateRenderer(const json::Document& doc);
-
 		svg::Document CreateSvgDocumentMap(const renderer::MapRenderer& renderer, const transport_catalogue::TransportCatalogue& guide);
 
-		void PrintMapToSvg(const json::Document& doc, const transport_catalogue::TransportCatalogue& guide, std::ostream& os = std::cout);
+		void PrintMapToSvg(const renderer::RenderSettings& render_settings, const transport_catalogue::TransportCatalogue& guide, std::ostream& os = std::cout);
+
+		bool SaveDataToFile(const json::Document& doc, const DownloadedDataForTransportRouter& data);
+
+		DownloadedDataForTransportRouter LoadDataFromFile(const json::Document& doc);
+
+		DownloadedDataForTransportRouter LoadDataFromJson(const json::Document& doc);
 
 		namespace detail {
 
-			transport_router::TransportRouter::RoutingSettings GetRoutingSettings(const json::Document& doc);
+			transport_router::TransportRouter::RoutingSettings LoadRoutingSettings(const json::Document& doc);
 
 			json::Node RequestFindRoute(const json::Dict& request, const transport_router::TransportRouter& router);
 
@@ -34,7 +46,7 @@ namespace transport_directory {
 
 			json::Node RequestBusesForStop(const json::Dict& request, const transport_catalogue::TransportCatalogue& guide);
 
-			json::Node RequestMap(const json::Document& doc, const json::Dict& request, const transport_catalogue::TransportCatalogue& guide);
+			json::Node RequestMap(const renderer::RenderSettings& render_settings, const json::Dict& request, const transport_catalogue::TransportCatalogue& guide);
 
 			json::Node StatToJson(const transport_catalogue::StatBusRoute& stat, int request_id);
 
@@ -72,7 +84,7 @@ namespace transport_directory {
 			svg::Rgb LoadRgb(const json::Node& node);
 			svg::Color LoadColor(const json::Node& node);
 			std::vector<svg::Color> LoadColorPalette(const json::Node& node);
-			renderer::RenderSettings LoadSettings(const json::Document& doc);
+			renderer::RenderSettings LoadRenderSettings(const json::Document& doc);
 		}// namespace detail
 
 	}// namespace json_reader
