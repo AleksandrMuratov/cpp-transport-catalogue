@@ -43,6 +43,6 @@ cmake --install . --config Debug
 ```
 Аналогично выполните команды в папке build-release поменяв конфигурацию на Release
 
-5. Клонируйте проект. Перед сборкой запишите в переменную `CMAKE_PREFIX_PATH` путь к пакету Protobuf.\
+5. Клонируйте проект транспортного справочника. Перед сборкой запишите в переменную `CMAKE_PREFIX_PATH` путь к пакету Protobuf.\
 Через консоль команда будет выглядеть так: `cmake . -DCMAKE_PREFIX_PATH=/path/to/protobuf/package`
 6. Сборка CMAKE проекта.
