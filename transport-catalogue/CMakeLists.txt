@@ -13,7 +13,6 @@ set(MY_HEADER_FILES
 	json_reader.h 
 	map_renderer.h 
 	ranges.h 
-	request_handler.h 
 	router.h 
 	serialization.h 
 	svg.h 
@@ -27,7 +26,6 @@ set(MY_SOURSE_FILES
 	json_builder.cpp 
 	json_reader.cpp 
 	map_renderer.cpp 
-	request_handler.cpp 
 	serialization.cpp 
 	svg.cpp 
 	transport_catalogue.cpp 
