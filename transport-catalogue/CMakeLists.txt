@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(transport_router CXX)
 set(CMAKE_CXX_STANDARD 17)
 
-#set(CMAKE_PREFIX_PATH "C:/path/to/protobuf/package")
+#set(CMAKE_PREFIX_PATH "C:/protobuf")
 set(MY_HEADER_FILES 
 	domain.h 
 	geo.h 
@@ -55,10 +55,7 @@ add_executable(${PROJECT_NAME} ${PROTO_SRCS} ${PROTO_HDRS} ${MY_HEADER_FILES} ${
 target_include_directories(${PROJECT_NAME} PUBLIC ${Protobuf_INCLUDE_DIRS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
-string(REPLACE "protobuf.lib" "protobufd.lib" "Protobuf_LIBRARY_DEBUG" "${Protobuf_LIBRARY_DEBUG}")
-string(REPLACE "protobuf.a" "protobufd.a" "Protobuf_LIBRARY_DEBUG" "${Protobuf_LIBRARY_DEBUG}")
-
 # Также find_package определила Protobuf_LIBRARY.
 # Protobuf зависит от библиотеки Threads. Добавим и её при компоновке.
 
-target_link_libraries(${PROJECT_NAME} "$<IF:$<CONFIG:Debug>,${Protobuf_LIBRARY_DEBUG},${Protobuf_LIBRARY}>" Threads::Threads)
+target_link_libraries(${PROJECT_NAME} ${Protobuf_LIBRARY} Threads::Threads)
